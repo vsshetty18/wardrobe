@@ -177,6 +177,12 @@ body {
   font-weight: 700;
   font-size: 16px;
 }
+.category-manage-title img.cat-icon-thumb {
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 5px;
+}
 .category-manage-desc { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .category-manage-actions { display: flex; gap: 4px; }
 
@@ -227,7 +233,6 @@ body {
   color: var(--muted);
 }
 .modal input[type="text"],
-.modal input[type="file"],
 .modal select,
 .modal textarea {
   width: 100%;
@@ -250,13 +255,6 @@ body {
   border-top: 1px solid var(--border);
 }
 .optional-details h3 { font-size: 14px; margin: 0 0 4px; color: var(--muted); }
-.item-image-preview {
-  margin-top: 10px;
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-}
 .radio-option {
   display: flex;
   align-items: center;
@@ -266,6 +264,78 @@ body {
   font-weight: 400;
 }
 #selectMoveTargetCategory { margin-top: 8px; margin-left: 24px; width: calc(100% - 24px); }
+
+/* ---------- IMAGE UPLOAD BOX ---------- */
+.upload-box {
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.upload-box:hover {
+  border-color: var(--primary);
+  background: #f1efff;
+}
+.upload-box-large { min-height: 160px; }
+
+.upload-input {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+.upload-icon { font-size: 26px; }
+.upload-hint { font-size: 11px; color: #b3b3c2; }
+
+.upload-preview-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.upload-preview-img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+}
+.upload-preview-img-large { height: 220px; }
+
+.btn-remove-image {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 2;
+}
+.btn-remove-image:hover { background: rgba(0,0,0,0.85); }
 
 /* ---------- ITEM DETAIL ---------- */
 .item-detail-img {
