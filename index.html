@@ -78,8 +78,19 @@
     <label>Category Name</label>
     <input type="text" id="inputCategoryName" placeholder="e.g. Topwear">
 
-    <label>Icon / Emoji (optional)</label>
-    <input type="text" id="inputCategoryIcon" placeholder="e.g. 👕">
+    <label>Icon / Image (optional)</label>
+    <div class="upload-box" id="categoryUploadBox">
+      <input type="file" id="inputCategoryIconImage" accept="image/*" class="upload-input">
+      <div class="upload-placeholder" id="categoryUploadPlaceholder">
+        <span>📁 Click to upload an image</span>
+        <span class="upload-hint">or type an emoji below instead</span>
+      </div>
+      <div class="upload-preview-wrap hidden" id="categoryPreviewWrap">
+        <img id="categoryIconPreview" class="upload-preview-img">
+        <button type="button" class="btn-remove-image" id="btnRemoveCategoryIcon">✕ Remove</button>
+      </div>
+    </div>
+    <input type="text" id="inputCategoryIcon" placeholder="or type an emoji e.g. 👕" maxlength="4">
 
     <label>Description (optional)</label>
     <textarea id="inputCategoryDescription" placeholder="Optional description"></textarea>
@@ -154,9 +165,19 @@
     </div>
 
     <div id="addItemForm">
-      <label>Image</label>
-      <input type="file" id="inputItemImage" accept="image/*">
-      <img id="itemImagePreview" class="item-image-preview hidden">
+      <label>Item Photo</label>
+      <div class="upload-box upload-box-large" id="itemUploadBox">
+        <input type="file" id="inputItemImage" accept="image/*" class="upload-input">
+        <div class="upload-placeholder" id="itemUploadPlaceholder">
+          <span class="upload-icon">📷</span>
+          <span>Click to upload a photo of the shirt, pant, etc.</span>
+          <span class="upload-hint">PNG or JPG</span>
+        </div>
+        <div class="upload-preview-wrap hidden" id="itemPreviewWrap">
+          <img id="itemImagePreview" class="upload-preview-img upload-preview-img-large">
+          <button type="button" class="btn-remove-image" id="btnRemoveItemImage">✕ Remove Photo</button>
+        </div>
+      </div>
 
       <label>Item Name</label>
       <input type="text" id="inputItemName" placeholder="e.g. Blue Linen Shirt">
