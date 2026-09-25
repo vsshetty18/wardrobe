@@ -13,6 +13,7 @@ let state = {
 let ui = {
   activeCategoryTabId: null,     // wardrobe view: which category tab is selected
   editingItemImageData: null,    // base64 of image chosen in Add Item form
+  editingCategoryIconData: null, // base64 of image chosen in Category form
   editingCategoryId: null,       // set when editing (not creating) a category
   editingSubcategory: null,      // { categoryId, subId } when editing a subcategory
   addSubcategoryForCategoryId: null,
@@ -42,11 +43,46 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
     console.error("Failed to save wardrobe data:", e);
+    alert("Storage is full. Try removing some images or items to free up space.");
   }
 }
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/* ---------------------- IMAGE HELPERS ---------------------- */
+
+function readImageAsCompressedDataUrl(file, maxDimension, callback) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDimension) {
+        height = Math.round(height * (maxDimension / width));
+        width = maxDimension;
+      } else if (height > maxDimension) {
+        width = Math.round(width * (maxDimension / height));
+        height = maxDimension;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /* ---------------------- NAVIGATION ---------------------- */
@@ -86,18 +122,19 @@ function renderWardrobeView() {
   content.classList.remove("hidden");
   addItemTopBtn.classList.remove("hidden");
 
-  // Ensure active tab is valid
   if (!ui.activeCategoryTabId || !state.categories.find(c => c.id === ui.activeCategoryTabId)) {
     ui.activeCategoryTabId = state.categories[0].id;
   }
 
-  // Render tabs
   const tabsEl = document.getElementById("categoryTabs");
   tabsEl.innerHTML = "";
   state.categories.forEach(cat => {
     const tab = document.createElement("button");
     tab.className = "category-tab" + (cat.id === ui.activeCategoryTabId ? " active" : "");
-    tab.textContent = (cat.icon ? cat.icon + " " : "") + cat.name;
+    const iconHtml = cat.iconImage
+      ? `<img src="${cat.iconImage}" style="width:16px;height:16px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:4px;">`
+      : (cat.icon ? cat.icon + " " : "");
+    tab.innerHTML = iconHtml + escapeHtml(cat.name);
     tab.addEventListener("click", () => {
       ui.activeCategoryTabId = cat.id;
       renderWardrobeView();
@@ -105,7 +142,6 @@ function renderWardrobeView() {
     tabsEl.appendChild(tab);
   });
 
-  // Render items for active category
   const grid = document.getElementById("itemsGrid");
   const noItemsEl = document.getElementById("noItemsInCategory");
   grid.innerHTML = "";
@@ -138,13 +174,6 @@ function renderWardrobeView() {
   });
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 document.getElementById("btnCreateFirstCategory").addEventListener("click", () => openCategoryModal());
 document.getElementById("btnCreateFirstCategory2").addEventListener("click", () => openCategoryModal());
 document.getElementById("btnAddItemTop").addEventListener("click", () => openAddItemModal());
@@ -171,6 +200,10 @@ function renderManageCategoriesView() {
     const card = document.createElement("div");
     card.className = "category-manage-card";
 
+    const iconHtml = cat.iconImage
+      ? `<img class="cat-icon-thumb" src="${cat.iconImage}">`
+      : (cat.icon ? cat.icon + " " : "");
+
     const header = document.createElement("div");
     header.className = "category-manage-header";
     header.innerHTML = `
@@ -180,7 +213,7 @@ function renderManageCategoriesView() {
           <button class="btn-icon" data-action="down" ${index === state.categories.length - 1 ? "disabled" : ""}>▼</button>
         </div>
         <div>
-          <div class="category-manage-title">${cat.icon ? cat.icon + " " : ""}${escapeHtml(cat.name)} <span style="color:var(--muted);font-weight:400;font-size:12px;">(${itemCount} item${itemCount === 1 ? "" : "s"})</span></div>
+          <div class="category-manage-title">${iconHtml} ${escapeHtml(cat.name)} <span style="color:var(--muted);font-weight:400;font-size:12px;">(${itemCount} item${itemCount === 1 ? "" : "s"})</span></div>
           ${cat.description ? `<div class="category-manage-desc">${escapeHtml(cat.description)}</div>` : ""}
         </div>
       </div>
@@ -197,7 +230,6 @@ function renderManageCategoriesView() {
 
     card.appendChild(header);
 
-    // Subcategories
     const subList = document.createElement("div");
     subList.className = "subcategory-list";
     cat.subcategories.forEach(sub => {
@@ -240,7 +272,15 @@ function moveCategory(catId, direction) {
 
 document.getElementById("btnOpenCreateCategory").addEventListener("click", () => openCategoryModal());
 
-/* ---------------------- CATEGORY MODAL ---------------------- */
+/* ---------------------- CATEGORY MODAL (with image upload) ---------------------- */
+
+function resetCategoryUploadBox() {
+  document.getElementById("inputCategoryIconImage").value = "";
+  document.getElementById("categoryUploadPlaceholder").classList.remove("hidden");
+  document.getElementById("categoryPreviewWrap").classList.add("hidden");
+  document.getElementById("categoryIconPreview").src = "";
+  ui.editingCategoryIconData = null;
+}
 
 function openCategoryModal(categoryId = null) {
   ui.editingCategoryId = categoryId;
@@ -250,12 +290,20 @@ function openCategoryModal(categoryId = null) {
   const iconInput = document.getElementById("inputCategoryIcon");
   const descInput = document.getElementById("inputCategoryDescription");
 
+  resetCategoryUploadBox();
+
   if (categoryId) {
     const cat = state.categories.find(c => c.id === categoryId);
     title.textContent = "Rename Category";
     nameInput.value = cat.name;
     iconInput.value = cat.icon || "";
     descInput.value = cat.description || "";
+    if (cat.iconImage) {
+      ui.editingCategoryIconData = cat.iconImage;
+      document.getElementById("categoryIconPreview").src = cat.iconImage;
+      document.getElementById("categoryUploadPlaceholder").classList.add("hidden");
+      document.getElementById("categoryPreviewWrap").classList.remove("hidden");
+    }
   } else {
     title.textContent = "Create Category";
     nameInput.value = "";
@@ -266,6 +314,22 @@ function openCategoryModal(categoryId = null) {
   nameInput.focus();
 }
 
+document.getElementById("inputCategoryIconImage").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  readImageAsCompressedDataUrl(file, 200, (dataUrl) => {
+    ui.editingCategoryIconData = dataUrl;
+    document.getElementById("categoryIconPreview").src = dataUrl;
+    document.getElementById("categoryUploadPlaceholder").classList.add("hidden");
+    document.getElementById("categoryPreviewWrap").classList.remove("hidden");
+  });
+});
+
+document.getElementById("btnRemoveCategoryIcon").addEventListener("click", (e) => {
+  e.stopPropagation();
+  resetCategoryUploadBox();
+});
+
 document.getElementById("btnCancelCategoryModal").addEventListener("click", () => {
   document.getElementById("modalCategory").classList.add("hidden");
 });
@@ -274,6 +338,7 @@ document.getElementById("btnSaveCategoryModal").addEventListener("click", () => 
   const name = document.getElementById("inputCategoryName").value.trim();
   const icon = document.getElementById("inputCategoryIcon").value.trim();
   const description = document.getElementById("inputCategoryDescription").value.trim();
+  const iconImage = ui.editingCategoryIconData || null;
 
   if (!name) {
     alert("Category name is required.");
@@ -284,12 +349,14 @@ document.getElementById("btnSaveCategoryModal").addEventListener("click", () => 
     const cat = state.categories.find(c => c.id === ui.editingCategoryId);
     cat.name = name;
     cat.icon = icon;
+    cat.iconImage = iconImage;
     cat.description = description;
   } else {
     state.categories.push({
       id: uid(),
       name,
       icon,
+      iconImage,
       description,
       subcategories: []
     });
@@ -373,11 +440,9 @@ function openDeleteCategoryModal(categoryId) {
     });
 
     if (state.categories.length <= 1) {
-      // no other category to move items to
       selectEl.innerHTML = `<option value="">No other categories available</option>`;
     }
 
-    // reset radio selection
     document.querySelectorAll('input[name="deleteItemsChoice"]').forEach(r => r.checked = false);
     selectEl.classList.add("hidden");
   } else {
@@ -419,7 +484,6 @@ document.getElementById("btnConfirmDeleteCategory").addEventListener("click", ()
       state.items.forEach(i => {
         if (i.categoryId === categoryId) {
           i.categoryId = targetId;
-          // subcategory no longer valid in new category
           i.subcategoryId = targetCat.subcategories[0] ? targetCat.subcategories[0].id : null;
         }
       });
@@ -470,8 +534,16 @@ document.getElementById("btnConfirmDeleteSubcategory").addEventListener("click",
 });
 
 /* ============================================================
-   ADD ITEM FLOW
+   ADD ITEM FLOW (with image upload box)
    ============================================================ */
+
+function resetItemUploadBox() {
+  document.getElementById("inputItemImage").value = "";
+  document.getElementById("itemUploadPlaceholder").classList.remove("hidden");
+  document.getElementById("itemPreviewWrap").classList.add("hidden");
+  document.getElementById("itemImagePreview").src = "";
+  ui.editingItemImageData = null;
+}
 
 function openAddItemModal(preselectCategoryId = null) {
   const noCatEl = document.getElementById("addItemNoCategories");
@@ -486,11 +558,7 @@ function openAddItemModal(preselectCategoryId = null) {
   noCatEl.classList.add("hidden");
   formEl.classList.remove("hidden");
 
-  // reset form
-  document.getElementById("inputItemImage").value = "";
-  document.getElementById("itemImagePreview").classList.add("hidden");
-  document.getElementById("itemImagePreview").src = "";
-  ui.editingItemImageData = null;
+  resetItemUploadBox();
   document.getElementById("inputItemName").value = "";
   document.getElementById("inputItemColor").value = "";
   document.getElementById("inputItemBrand").value = "";
@@ -542,14 +610,17 @@ document.getElementById("btnAddItemGoCreateCategory").addEventListener("click", 
 document.getElementById("inputItemImage").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    ui.editingItemImageData = ev.target.result;
-    const preview = document.getElementById("itemImagePreview");
-    preview.src = ev.target.result;
-    preview.classList.remove("hidden");
-  };
-  reader.readAsDataURL(file);
+  readImageAsCompressedDataUrl(file, 800, (dataUrl) => {
+    ui.editingItemImageData = dataUrl;
+    document.getElementById("itemImagePreview").src = dataUrl;
+    document.getElementById("itemUploadPlaceholder").classList.add("hidden");
+    document.getElementById("itemPreviewWrap").classList.remove("hidden");
+  });
+});
+
+document.getElementById("btnRemoveItemImage").addEventListener("click", (e) => {
+  e.stopPropagation();
+  resetItemUploadBox();
 });
 
 document.getElementById("btnCancelAddItem").addEventListener("click", () => {
@@ -655,7 +726,6 @@ function renderOutfitMatcherView() {
     return;
   }
 
-  // Reset selections for categories that no longer exist
   Object.keys(outfitSelections).forEach(catId => {
     if (!categoriesWithItems.find(c => c.id === catId)) delete outfitSelections[catId];
   });
@@ -666,7 +736,10 @@ function renderOutfitMatcherView() {
     const itemsInCat = state.items.filter(i => i.categoryId === cat.id);
 
     const h3 = document.createElement("h3");
-    h3.textContent = (cat.icon ? cat.icon + " " : "") + cat.name;
+    const iconHtml = cat.iconImage
+      ? `<img src="${cat.iconImage}" style="width:16px;height:16px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:4px;">`
+      : (cat.icon ? cat.icon + " " : "");
+    h3.innerHTML = iconHtml + escapeHtml(cat.name);
     slot.appendChild(h3);
 
     const grid = document.createElement("div");
@@ -681,7 +754,7 @@ function renderOutfitMatcherView() {
       `;
       opt.addEventListener("click", () => {
         if (outfitSelections[cat.id] === item.id) {
-          delete outfitSelections[cat.id]; // toggle off
+          delete outfitSelections[cat.id];
         } else {
           outfitSelections[cat.id] = item.id;
         }
@@ -694,7 +767,6 @@ function renderOutfitMatcherView() {
     container.appendChild(slot);
   });
 
-  // Summary of chosen outfit
   const summary = document.createElement("div");
   summary.className = "matcher-summary";
   const chosenIds = Object.values(outfitSelections);
