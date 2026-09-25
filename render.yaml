@@ -2,7 +2,7 @@ services:
   - type: web
     name: my-wardrobe
     runtime: static
-    repo: https://github.com/YOUR_USERNAME/my-wardrobe.git
+    repo: https://github.com/vsshetty18/wardrobe
     branch: main
     buildCommand: ""
     staticPublishPath: .
