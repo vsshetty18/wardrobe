@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Wardrobe</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== NAV ===================== -->
+  <nav id="mainNav" class="main-nav">
+    <div class="nav-brand">👗 My Wardrobe</div>
+    <div class="nav-links">
+      <button data-view="wardrobe" class="nav-btn active">Wardrobe</button>
+      <button data-view="manageCategories" class="nav-btn">Manage Categories</button>
+      <button data-view="outfitMatcher" class="nav-btn">Outfit Matcher</button>
+    </div>
+  </nav>
+
+  <!-- ===================== WARDROBE HOME VIEW ===================== -->
+  <section id="view-wardrobe" class="view active-view">
+    <div class="view-header">
+      <h1>My Wardrobe</h1>
+      <button id="btnAddItemTop" class="btn btn-primary hidden">+ Add Item</button>
+    </div>
+
+    <!-- Empty state: no categories at all -->
+    <div id="noCategoriesState" class="empty-state hidden">
+      <p class="empty-title">Create your first category</p>
+      <button id="btnCreateFirstCategory" class="btn btn-primary">+ Add Category</button>
+    </div>
+
+    <!-- Category tabs + items grid (shown once categories exist) -->
+    <div id="wardrobeContent" class="hidden">
+      <div id="categoryTabs" class="category-tabs"></div>
+      <div id="itemsGrid" class="items-grid"></div>
+      <div id="noItemsInCategory" class="empty-state hidden">
+        <p class="empty-title">No items in this category yet.</p>
+        <button class="btn btn-secondary" id="btnAddItemEmptyCat">+ Add Item</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MANAGE CATEGORIES VIEW ===================== -->
+  <section id="view-manageCategories" class="view">
+    <div class="view-header">
+      <h1>Manage Categories</h1>
+      <button id="btnOpenCreateCategory" class="btn btn-primary">+ Create Category</button>
+    </div>
+
+    <div id="noCategoriesManageState" class="empty-state hidden">
+      <p class="empty-title">No categories yet.</p>
+      <button class="btn btn-primary" id="btnCreateFirstCategory2">+ Create Category</button>
+    </div>
+
+    <div id="categoryManageList" class="category-manage-list"></div>
+  </section>
+
+  <!-- ===================== OUTFIT MATCHER VIEW ===================== -->
+  <section id="view-outfitMatcher" class="view">
+    <div class="view-header">
+      <h1>Outfit Matcher</h1>
+    </div>
+    <div id="outfitMatcherContent"></div>
+  </section>
+
+</div>
+
+<!-- ===================== MODALS ===================== -->
+
+<!-- Create / Edit Category Modal -->
+<div id="modalCategory" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="categoryModalTitle">Create Category</h2>
+    <label>Category Name</label>
+    <input type="text" id="inputCategoryName" placeholder="e.g. Topwear">
+
+    <label>Icon / Emoji (optional)</label>
+    <input type="text" id="inputCategoryIcon" placeholder="e.g. 👕">
+
+    <label>Description (optional)</label>
+    <textarea id="inputCategoryDescription" placeholder="Optional description"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelCategoryModal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveCategoryModal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create / Edit Subcategory Modal -->
+<div id="modalSubcategory" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="subcategoryModalTitle">Create Subcategory</h2>
+    <label>Subcategory Name</label>
+    <input type="text" id="inputSubcategoryName" placeholder="e.g. Shirts">
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelSubcategoryModal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveSubcategoryModal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Category Confirmation Modal -->
+<div id="modalDeleteCategory" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Delete Category?</h2>
+    <p id="deleteCategoryMessage"></p>
+
+    <div id="deleteCategoryItemsOptions" class="hidden">
+      <label class="radio-option">
+        <input type="radio" name="deleteItemsChoice" value="move">
+        Move items to another category
+      </label>
+      <select id="selectMoveTargetCategory" class="hidden"></select>
+
+      <label class="radio-option">
+        <input type="radio" name="deleteItemsChoice" value="delete">
+        Delete items
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelDeleteCategory">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDeleteCategory">Delete Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Subcategory Confirmation Modal -->
+<div id="modalDeleteSubcategory" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Delete Subcategory?</h2>
+    <p id="deleteSubcategoryMessage"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelDeleteSubcategory">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDeleteSubcategory">Delete Subcategory</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Item Modal (multi-step) -->
+<div id="modalAddItem" class="modal-overlay hidden">
+  <div class="modal modal-large">
+    <h2>Add Clothing Item</h2>
+
+    <div id="addItemNoCategories" class="empty-state hidden">
+      <p class="empty-title">No categories yet.</p>
+      <button class="btn btn-primary" id="btnAddItemGoCreateCategory">+ Create Category</button>
+    </div>
+
+    <div id="addItemForm">
+      <label>Image</label>
+      <input type="file" id="inputItemImage" accept="image/*">
+      <img id="itemImagePreview" class="item-image-preview hidden">
+
+      <label>Item Name</label>
+      <input type="text" id="inputItemName" placeholder="e.g. Blue Linen Shirt">
+
+      <label>Category</label>
+      <select id="selectItemCategory"></select>
+
+      <label>Subcategory</label>
+      <select id="selectItemSubcategory"></select>
+
+      <div class="optional-details">
+        <h3>Optional Details</h3>
+        <label>Color</label>
+        <input type="text" id="inputItemColor">
+        <label>Brand</label>
+        <input type="text" id="inputItemBrand">
+        <label>Size</label>
+        <input type="text" id="inputItemSize">
+        <label>Fit</label>
+        <input type="text" id="inputItemFit">
+        <label>Pattern</label>
+        <input type="text" id="inputItemPattern">
+        <label>Occasion</label>
+        <input type="text" id="inputItemOccasion">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnCancelAddItem">Cancel</button>
+        <button class="btn btn-primary" id="btnSaveItem">Save Item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Item Detail / Edit Modal -->
+<div id="modalItemDetail" class="modal-overlay hidden">
+  <div class="modal modal-large">
+    <h2>Item Details</h2>
+    <div id="itemDetailContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnDeleteItemDetail">Delete Item</button>
+      <button class="btn btn-secondary" id="btnCloseItemDetail">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
